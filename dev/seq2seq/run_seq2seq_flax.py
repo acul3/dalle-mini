@@ -20,6 +20,7 @@ Script adapted from run_summarization_flax.py
 # You can also adapt this script on your own sequence to sequence task. Pointers for this are left as comments.
 
 import os
+import copy
 # set a common huggingface cache folder (used with datasets and transformers) and wandb cache folder (used with artifacts)
 os.environ['HF_HOME'] = '/data/huggingface/'     # required before importing transformers & datasets
 os.environ['WANDB_CACHE_DIR'] = '/data/wandb/'   # required before importing wandb
@@ -60,9 +61,8 @@ from transformers import (
     HfArgumentParser,
     TrainingArguments,
 )
-from transformers.models.bart.modeling_flax_bart import *
 from transformers.file_utils import is_offline_mode
-
+from transformers.models.t5.modeling_flax_t5 import *
 import wandb
 
 logger = pylogging.getLogger(__name__)
@@ -87,7 +87,7 @@ MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 OUTPUT_VOCAB_SIZE = 16384 + 1  # encoded image token space + 1 for bos
 OUTPUT_LENGTH = 256 + 1  # number of encoded tokens + 1 for bos
 BOS_TOKEN_ID = 16384
-BASE_MODEL = 'facebook/bart-large-cnn'  # we currently have issues with bart-large
+BASE_MODEL = 'Wikidepia/IndoT5-large'  # we currently have issues with bart-large
 
 
 @dataclass
@@ -269,41 +269,41 @@ class TrainState(train_state.TrainState):
     def replicate(self):
         return jax_utils.replicate(self).replace(dropout_rng=shard_prng_key(self.dropout_rng))
 
-
-class CustomFlaxBartModule(FlaxBartModule):
+class CustomT5Module(FlaxT5Module):
     def setup(self):
-        # check config is valid, otherwise set default values
         self.config.vocab_size_output = getattr(self.config, 'vocab_size_output', OUTPUT_VOCAB_SIZE)
         self.config.max_position_embeddings_decoder = getattr(self.config, 'max_position_embeddings_decoder', OUTPUT_LENGTH)
-
-        # we keep shared to easily load pre-trained weights
         self.shared = nn.Embed(
             self.config.vocab_size,
             self.config.d_model,
-            embedding_init=jax.nn.initializers.normal(self.config.init_std, self.dtype),
+            embedding_init=jax.nn.initializers.normal(self.config.initializer_factor * 1.0, self.dtype),
             dtype=self.dtype,
         )
-        # a separate embedding is used for the decoder
+
         self.decoder_embed = nn.Embed(
             self.config.vocab_size_output,
             self.config.d_model,
-            embedding_init=jax.nn.initializers.normal(self.config.init_std, self.dtype),
+            embedding_init=jax.nn.initializers.normal(self.config.initializer_factor * 1.0, self.dtype),
             dtype=self.dtype,
         )
-        self.encoder = FlaxBartEncoder(self.config, dtype=self.dtype, embed_tokens=self.shared)
 
-        # the decoder has a different config
-        decoder_config = BartConfig(self.config.to_dict())
+        encoder_config = copy.deepcopy(self.config)
+        encoder_config.causal = False
+        self.encoder = FlaxT5Stack(encoder_config, embed_tokens=self.shared, dtype=self.dtype)
+
+        decoder_config = copy.deepcopy(self.config)
+        decoder_config.causal = True
+        decoder_config.num_layers = self.config.num_decoder_layers
         decoder_config.max_position_embeddings = self.config.max_position_embeddings_decoder
         decoder_config.vocab_size = self.config.vocab_size_output
-        self.decoder = FlaxBartDecoder(decoder_config, dtype=self.dtype, embed_tokens=self.decoder_embed)
+        self.decoder = FlaxT5Stack(decoder_config, embed_tokens=self.decoder_embed, dtype=self.dtype)
 
-class CustomFlaxBartForConditionalGenerationModule(FlaxBartForConditionalGenerationModule):
+class CustomFlaxT5ForConditionalGenerationModule(FlaxT5ForConditionalGenerationModule):
     def setup(self):
         # check config is valid, otherwise set default values
         self.config.vocab_size_output = getattr(self.config, 'vocab_size_output', OUTPUT_VOCAB_SIZE)
 
-        self.model = CustomFlaxBartModule(config=self.config, dtype=self.dtype)
+        self.model = CustomT5Module(config=self.config, dtype=self.dtype)
         self.lm_head = nn.Dense(
             self.config.vocab_size_output,
             use_bias=False,
@@ -312,8 +312,8 @@ class CustomFlaxBartForConditionalGenerationModule(FlaxBartForConditionalGenerat
         )
         self.final_logits_bias = self.param("final_logits_bias", self.bias_init, (1, self.config.vocab_size_output))
 
-class CustomFlaxBartForConditionalGeneration(FlaxBartForConditionalGeneration):
-    module_class = CustomFlaxBartForConditionalGenerationModule
+class CustomFlaxT5ForConditionalGeneration(FlaxT5ForConditionalGeneration):
+    module_class = CustomFlaxT5ForConditionalGenerationModule
     
 
 def data_loader(rng: jax.random.PRNGKey, dataset: Dataset, batch_size: int, shuffle: bool = False):
@@ -454,7 +454,7 @@ def main():
     if model_args.from_checkpoint is not None:
         artifact = wandb.run.use_artifact(model_args.from_checkpoint)
         artifact_dir = artifact.download()
-        model = CustomFlaxBartForConditionalGeneration.from_pretrained(artifact_dir)
+        model = CustomFlaxT5ForConditionalGeneration.from_pretrained(artifact_dir)
 
         # some models will try to change bos (because of force_bos_token_to_be_generated)
         # we ensure bos and eos are not forced
@@ -476,7 +476,7 @@ def main():
             model_args.model_name_or_path, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype)
         )
         # Set up our new model config
-        config = BartConfig.from_pretrained(model_args.model_name_or_path)
+        config = T5Config.from_pretrained(model_args.model_name_or_path)
         config.tie_word_embeddings = False
         config.decoder_start_token_id = BOS_TOKEN_ID  # for first token
         config.bos_token_id = BOS_TOKEN_ID  # should not be used (due to forced_bos_token_id)
@@ -489,7 +489,7 @@ def main():
         config.max_length = data_args.max_target_length
 
         # Create a custom model and initialize it randomly
-        model = CustomFlaxBartForConditionalGeneration(config, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype))
+        model = CustomFlaxT5ForConditionalGeneration(config, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype))
 
         # Use pre-trained weights for encoder
         model.params['model']['encoder'] = base_model.params['model']['encoder']
