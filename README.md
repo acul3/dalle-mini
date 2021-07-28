@@ -1,44 +1,34 @@
 ---
-title: Dalle Mini
-emoji: 🎨
-colorFrom: red
-colorTo: blue
+title: DALL·E mini
+emoji: 🥑
+colorFrom: yellow
+colorTo: green
 sdk: streamlit
 app_file: app/app.py
 pinned: false
 ---
 
-# DALL-E Mini
+# DALL·E Mini
 
 _Generate images from a text prompt_
 
-TODO: add some cool example
+<img src="img/logo.png" width="200">
 
-## [Create my own images with the demo →](TODO)
+Our logo was generated with DALL·E mini using the prompt "logo of an armchair in the shape of an avocado".
+
+You can create your own pictures with [the demo](https://huggingface.co/spaces/flax-community/dalle-mini) (temporarily in beta on Huging Face Spaces but soon to be open to all).
 
 ## How does it work?
 
-Refer to [our report](TODO).
+Refer to [our report](https://wandb.ai/dalle-mini/dalle-mini/reports/DALL-E-mini--Vmlldzo4NjIxODA).
 
 ## Development
 
-This section is for the adventurous people wanting to look into the code.
-
 ### Dependencies Installation
 
-The root folder and associated `requirements.txt` is only for the app.
+The root folder and associated [`requirements.txt`](./requirements.txt) is only for the app.
 
-You will find necessary requirements in each sub-section.
-
-You should create a new python virtual environment and install the project dependencies inside the virtual env. You need to use the `-f` (`--find-links`) option for `pip` to be able to find the appropriate `libtpu` required for the TPU hardware.
-
-Adapt the installation to your own hardware and follow library installation instructions.
-
-```
-$ pip install -r requirements.txt -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
-```
-
-If you use `conda`, you can create the virtual env and install everything using: `conda env update -f environments.yaml`
+For development, use [`dev/requirements.txt`](dev/requirements.txt) or [`dev/environment.yaml`](dev/environment.yaml).
 
 ### Training of VQGAN
 
@@ -52,12 +42,28 @@ Use [patil-suraj/vqgan-jax](https://github.com/patil-suraj/vqgan-jax).
 
 ### Training of Seq2Seq
 
-Refer to `seq2seq` folder (some parameters may have been hardcoded for convenience when training on our TPU VM).
+Refer to [`dev/seq2seq`](dev/seq2seq) folder.
 
-### Inference
+You can also adjust the [sweep configuration file](https://docs.wandb.ai/guides/sweeps) if you need to perform a hyperparameter search.
 
-Refer to the demo notebooks.
-TODO: add links
+### Inference Pipeline
+
+To generate sample predictions and understand the inference pipeline step by step, refer to [`dev/inference/inference_pipeline.ipynb`](dev/inference/inference_pipeline.ipynb).
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/borisdayma/dalle-mini/blob/main/dev/inference/inference_pipeline.ipynb)
+
+## FAQ
+
+### Where to find the latest models?
+
+Trained models are on 🤗 Model Hub:
+
+- [VQGAN-f16-16384](https://huggingface.co/flax-community/vqgan_f16_16384) for encoding/decoding images
+- [DALL·E mini](https://huggingface.co/flax-community/dalle-mini) for generating images from a text prompt
+
+### Where does the logo come from?
+
+The "armchair in the shape of an avocado" was used by OpenAI when releasing DALL·E to illustrate the model's capabilities. Having successful predictions on this prompt represents a big milestone to us.
 
 ## Authors
 
