@@ -19,8 +19,8 @@ from dalle_mini.dataset import *
 from vqgan_jax.modeling_flax_vqgan import VQModel
 
 model = VQModel.from_pretrained("flax-community/vqgan_f16_16384")
-cc12m_images = '/media/storage/images'
-cc12m_list = 'train-clean.tsv'
+cc12m_images = 'images/'
+cc12m_list = 'train_file_final.tsv'
 # cc12m_list = '/data/CC12M/images-10000.tsv'
 cc12m_output = 'train-encoded.tsv'
 
