@@ -1,6 +1,6 @@
 program: run_seq2seq_flax.py
 entity: wandb
-project: hf-flax-dalle-mini
+project: dalle-indo
 method: random
 metric:
   name: eval/loss
@@ -20,9 +20,9 @@ command:
   - python3
   - ${program}
   - "--train_file"
-  - "/data/CC12M/encoded-small-train.tsv"
+  - "/data/CC15M/train-encoded.tsv"
   - "--validation_file"
-  - "/data/CC12M/encoded-small-valid.tsv"
+  - "/data/CC15M/val-encoded.tsv"
   - "--output_dir"
   - "./output_sweep"
   - "--overwrite_output_dir"

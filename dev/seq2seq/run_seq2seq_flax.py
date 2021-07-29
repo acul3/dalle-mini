@@ -21,8 +21,7 @@ Script adapted from run_summarization_flax.py
 
 import os
 import copy
-# set a common huggingface cache folder (used with datasets and transformers) and wandb cache folder (used with artifacts)
-os.environ['HF_HOME'] = '/data/huggingface/'     # required before importing transformers & datasets
+# set a common huggingface cache folder (used with datasets and transformers) and wandb cache folder (used with artifacts)    # required before importing transformers & datasets
 os.environ['WANDB_CACHE_DIR'] = '/data/wandb/'   # required before importing wandb
 
 import logging as pylogging    # To avoid collision with transformers.utils.logging
@@ -391,7 +390,7 @@ def main():
     # Set up wandb run
     wandb.init(
         entity='wandb',
-        project='hf-flax-dalle-mini',
+        project='dalle-indo',
         job_type='Seq2SeqVQGAN',
         config=parser.parse_args()
     )
