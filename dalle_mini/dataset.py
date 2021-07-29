@@ -41,7 +41,7 @@ class CaptionDataset(Dataset):
 
         # Load captions as DataFrame
         self.captions = pd.read_csv(captions_path, delimiter='\t', header=0)
-        self.captions['image_file'] = self.captions['image_file'].astype(str)
+        self.captions['image_path'] = self.captions['image_path'].astype(str)
 
         # PyTorch transformation pipeline for the image (normalizing, etc.)
         self.text_transform = text_transform
@@ -56,13 +56,13 @@ class CaptionDataset(Dataset):
         self.include_captions = include_captions
 
     def verify_that_all_images_exist(self):
-        for image_file in self.captions['image_file']:
+        for image_file in self.captions['image_path']:
             p = self.images_root / image_file
             if not p.is_file():
                 print(f'file does not exist: {p}')
 
     def _get_raw_image(self, i):
-        image_file = self.captions.iloc[i]['image_file']
+        image_file = self.captions.iloc[i]['image_path']
         image_path = self.images_root / image_file
         image = default_loader(image_path)
         return image
