@@ -517,8 +517,8 @@ def main():
         model = CustomFlaxT5ForConditionalGeneration(config, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype))
 
         # Use pre-trained weights for encoder
-        model.params['model']['encoder'] = base_model.params['model']['encoder']
-        model.params['model']['shared'] = base_model.params['model']['shared']
+        model.params['encoder'] = base_model.params['encoder']
+        model.params['shared'] = base_model.params['shared']
         del base_model
 
     # Load tokenizer if it has not been set
