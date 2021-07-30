@@ -1,5 +1,5 @@
 program: run_seq2seq_flax.py
-entity: wandb
+entity: munggok
 project: dalle-indo
 method: random
 metric:

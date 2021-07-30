@@ -302,14 +302,40 @@ class CustomFlaxT5ForConditionalGenerationModule(FlaxT5ForConditionalGenerationM
         # check config is valid, otherwise set default values
         self.config.vocab_size_output = getattr(self.config, 'vocab_size_output', OUTPUT_VOCAB_SIZE)
 
+        self.config.max_position_embeddings_decoder = getattr(self.config, 'max_position_embeddings_decoder', OUTPUT_LENGTH)
+        self.shared = nn.Embed(
+            self.config.vocab_size,
+            self.config.d_model,
+            embedding_init=jax.nn.initializers.normal(self.config.initializer_factor * 1.0, self.dtype),
+            dtype=self.dtype,
+        )
+
+        self.decoder_embed = nn.Embed(
+            self.config.vocab_size_output,
+            self.config.d_model,
+            embedding_init=jax.nn.initializers.normal(self.config.initializer_factor * 1.0, self.dtype),
+            dtype=self.dtype,
+        )
+
+        encoder_config = copy.deepcopy(self.config)
+        encoder_config.causal = False
+        self.encoder = FlaxT5Stack(encoder_config, embed_tokens=self.shared, dtype=self.dtype)
+
+        decoder_config = copy.deepcopy(self.config)
+        decoder_config.causal = True
+        decoder_config.num_layers = self.config.num_decoder_layers
+        decoder_config.max_position_embeddings = self.config.max_position_embeddings_decoder
+        decoder_config.vocab_size = self.config.vocab_size_output
+        self.decoder = FlaxT5Stack(decoder_config, embed_tokens=self.decoder_embed, dtype=self.dtype)
+
         self.model = CustomT5Module(config=self.config, dtype=self.dtype)
         self.lm_head = nn.Dense(
             self.config.vocab_size_output,
             use_bias=False,
             dtype=self.dtype,
-            kernel_init=jax.nn.initializers.normal(self.config.init_std, self.dtype),
+            kernel_init=jax.nn.initializers.normal(self.config.initializer_factor, self.dtype),
         )
-        self.final_logits_bias = self.param("final_logits_bias", self.bias_init, (1, self.config.vocab_size_output))
+        #self.final_logits_bias = self.param("final_logits_bias", self.bias_init, (1, self.config.vocab_size_output))
 
 class CustomFlaxT5ForConditionalGeneration(FlaxT5ForConditionalGeneration):
     module_class = CustomFlaxT5ForConditionalGenerationModule
@@ -389,7 +415,7 @@ def main():
     
     # Set up wandb run
     wandb.init(
-        entity='wandb',
+        entity='munggok',
         project='dalle-indo',
         job_type='Seq2SeqVQGAN',
         config=parser.parse_args()
@@ -472,7 +498,7 @@ def main():
 
     else:
         base_model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
-            model_args.model_name_or_path, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype)
+            model_args.model_name_or_path, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype), from_pt=True
         )
         # Set up our new model config
         config = T5Config.from_pretrained(model_args.model_name_or_path)

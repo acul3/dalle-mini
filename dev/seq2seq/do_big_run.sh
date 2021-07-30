@@ -1,7 +1,7 @@
 python run_seq2seq_flax.py \
 	--max_source_length 128 \
-	--train_file /data/CC12M/encoded-small-train.tsv \
-	--validation_file /data/CC12M/encoded-small-valid.tsv \
+	--train_file train-encoded.tsv \
+	--validation_file train-encoded.tsv \
 	--output_dir output \
 	--per_device_train_batch_size 56 \
 	--per_device_eval_batch_size 56 \
