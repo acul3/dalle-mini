@@ -22,7 +22,7 @@ Script adapted from run_summarization_flax.py
 import os
 import copy
 # set a common huggingface cache folder (used with datasets and transformers) and wandb cache folder (used with artifacts)    # required before importing transformers & datasets
-os.environ['WANDB_CACHE_DIR'] = '/data/wandb/'   # required before importing wandb
+os.environ['WANDB_CACHE_DIR'] = '/media/storage/wandb/'   # required before importing wandb
 os.environ['HF_HOME'] = '/media/storage/huggingface/'
 import logging as pylogging    # To avoid collision with transformers.utils.logging
 import sys
