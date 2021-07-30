@@ -23,7 +23,7 @@ import os
 import copy
 # set a common huggingface cache folder (used with datasets and transformers) and wandb cache folder (used with artifacts)    # required before importing transformers & datasets
 os.environ['WANDB_CACHE_DIR'] = '/data/wandb/'   # required before importing wandb
-
+os.environ['HF_HOME'] = '/media/storage/huggingface/'
 import logging as pylogging    # To avoid collision with transformers.utils.logging
 import sys
 import time
@@ -561,8 +561,13 @@ def main():
         return shifted_input_ids
 
     def preprocess_function(examples):
-        inputs = examples[text_column]
-        inputs = [prefix + inp for inp in inputs]
+        inputss = examples[text_column]
+        inputs = []
+        for inp in inputss:
+            if inp is not None:
+                inputs.append(prefix + inp)
+            else:
+                inputs.append('' + "sebuah gambar")
 	# Setting padding="max_length" as we need fixed length inputs for jitted functions
         model_inputs = tokenizer(
             inputs, max_length=data_args.max_source_length, padding="max_length", truncation=True, return_tensors="np"
