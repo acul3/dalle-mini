@@ -30,7 +30,7 @@ import gradio as gr
 from dalle_mini.helpers import captioned_strip
 
 
-DALLE_REPO = 'flax-community/dalle-mini-indo'
+DALLE_REPO = 'munggok/dalle-mini-indo'
 
 VQGAN_REPO = 'flax-community/vqgan_f16_16384'
 VQGAN_COMMIT_ID = '90cc46addd2dd8f5be21586a9a23e1b95aa506a9'
@@ -73,7 +73,7 @@ vqgan_params = replicate(vqgan.params)
 #processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 #print("Initialize CLIPProcessor")
 
-def hallucinate(prompt, num_images=64):
+def hallucinate(prompt, num_images=16):
     prompt = [prompt] * jax.device_count()
     inputs = tokenizer(prompt, return_tensors='jax', padding="max_length", truncation=True, max_length=128).data
     inputs = shard(inputs)
@@ -117,7 +117,7 @@ def top_k_predictions(prompt, num_candidates=32, k=16):
     #images = clip_top_k(prompt, images, k=k)
     return images
 
-def run_inference(prompt, num_images=32, num_preds=16):
+def run_inference(prompt, num_images=16, num_preds=16):
     images = top_k_predictions(prompt, num_candidates=num_images, k=num_preds)
     predictions = captioned_strip(images)
     output_title = f"""
