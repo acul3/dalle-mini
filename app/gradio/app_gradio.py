@@ -11,15 +11,16 @@ import jax
 import flax.linen as nn
 from flax.training.common_utils import shard
 from flax.jax_utils import replicate, unreplicate
+from PIL import Image, ImageDraw,ImageFont
 
-from transformers import BartTokenizer, FlaxBartForConditionalGeneration
 
-from PIL import Image
+from transformers import T5Tokenizer, FlaxBartForConditionalGeneration
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 from vqgan_jax.modeling_flax_vqgan import VQModel
-from dalle_mini.model import CustomFlaxBartForConditionalGeneration
+from dalle_mini.model import CustomFlaxT5ForConditionalGeneration
 
 # ## CLIP Scoring
 from transformers import CLIPProcessor, FlaxCLIPModel
@@ -29,14 +30,13 @@ import gradio as gr
 from dalle_mini.helpers import captioned_strip
 
 
-DALLE_REPO = 'flax-community/dalle-mini'
-DALLE_COMMIT_ID = '4d34126d0df8bc4a692ae933e3b902a1fa8b6114'
+DALLE_REPO = 'flax-community/dalle-mini-indo'
 
 VQGAN_REPO = 'flax-community/vqgan_f16_16384'
 VQGAN_COMMIT_ID = '90cc46addd2dd8f5be21586a9a23e1b95aa506a9'
 
-tokenizer = BartTokenizer.from_pretrained(DALLE_REPO, revision=DALLE_COMMIT_ID)
-model = CustomFlaxBartForConditionalGeneration.from_pretrained(DALLE_REPO, revision=DALLE_COMMIT_ID)
+tokenizer = T5Tokenizer.from_pretrained(DALLE_REPO)
+model = CustomFlaxT5ForConditionalGeneration.from_pretrained(DALLE_REPO)
 vqgan = VQModel.from_pretrained(VQGAN_REPO, revision=VQGAN_COMMIT_ID)
 
 def custom_to_pil(x):
@@ -68,10 +68,10 @@ p_get_images = jax.pmap(get_images, "batch")
 bart_params = replicate(model.params)
 vqgan_params = replicate(vqgan.params)
 
-clip = FlaxCLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-print("Initialize FlaxCLIPModel")
-processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-print("Initialize CLIPProcessor")
+#clip = FlaxCLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+#print("Initialize FlaxCLIPModel")
+#processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+#print("Initialize CLIPProcessor")
 
 def hallucinate(prompt, num_images=64):
     prompt = [prompt] * jax.device_count()
@@ -109,15 +109,15 @@ def compose_predictions(images, caption=None):
     if caption is not None:
         draw = ImageDraw.Draw(img)
         font = ImageFont.truetype("/usr/share/fonts/truetype/liberation2/LiberationMono-Bold.ttf", 40)
-        draw.text((20, 3), caption, (255,255,255), font=font)
+        draw.text((20, 3), caption, (255,255,255))
     return img
 
-def top_k_predictions(prompt, num_candidates=32, k=8):
+def top_k_predictions(prompt, num_candidates=32, k=16):
     images = hallucinate(prompt, num_images=num_candidates)
-    images = clip_top_k(prompt, images, k=k)
+    #images = clip_top_k(prompt, images, k=k)
     return images
 
-def run_inference(prompt, num_images=32, num_preds=8):
+def run_inference(prompt, num_images=32, num_preds=16):
     images = top_k_predictions(prompt, num_candidates=num_images, k=num_preds)
     predictions = captioned_strip(images)
     output_title = f"""
@@ -131,18 +131,18 @@ outputs = [
 ]
 
 description = """
-DALL·E-mini is an AI model that generates images from any prompt you give! Generate images from text:
+DALL·E-mini Indonesia() ,Generate images from text:
 """
 gr.Interface(run_inference, 
-    inputs=[gr.inputs.Textbox(label='What do you want to see?')],
+    inputs=[gr.inputs.Textbox(label='Masukkan Text')],
     outputs=outputs, 
     title='DALL·E mini',
     description=description,
     article="<p style='text-align: center'> Created by Boris Dayma et al. 2021 | <a href='https://github.com/borisdayma/dalle-mini'>GitHub</a> | <a href='https://wandb.ai/dalle-mini/dalle-mini/reports/DALL-E-mini--Vmlldzo4NjIxODA'>Report</a></p>",
     layout='vertical',
     theme='huggingface',
-    examples=[['an armchair in the shape of an avocado'], ['snowy mountains by the sea']],
+    examples=[['Kursi kayu di ruang tamu'], ['rumah besar dengan taman yang hijau']],
     allow_flagging=False,
     live=False,
-    # server_port=8999
+    server_port=8888
 ).launch(share=True)
