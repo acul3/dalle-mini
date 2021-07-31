@@ -12,7 +12,7 @@ import flax.linen as nn
 from flax.training.common_utils import shard
 from flax.jax_utils import replicate, unreplicate
 from PIL import Image, ImageDraw,ImageFont
-
+from mtranslate import translate
 
 from transformers import T5Tokenizer, FlaxBartForConditionalGeneration
 
@@ -68,10 +68,10 @@ p_get_images = jax.pmap(get_images, "batch")
 bart_params = replicate(model.params)
 vqgan_params = replicate(vqgan.params)
 
-#clip = FlaxCLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-#print("Initialize FlaxCLIPModel")
-#processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-#print("Initialize CLIPProcessor")
+clip = FlaxCLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+print("Initialize FlaxCLIPModel")
+processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+print("Initialize CLIPProcessor")
 
 def hallucinate(prompt, num_images=16):
     prompt = [prompt] * jax.device_count()
@@ -93,6 +93,7 @@ def hallucinate(prompt, num_images=16):
     return all_images
 
 def clip_top_k(prompt, images, k=8):
+    prompt =  translate(prompt,'en','id')
     inputs = processor(text=prompt, images=images, return_tensors="np", padding=True)
     outputs = clip(**inputs)
     logits = outputs.logits_per_text
@@ -109,15 +110,15 @@ def compose_predictions(images, caption=None):
     if caption is not None:
         draw = ImageDraw.Draw(img)
         font = ImageFont.truetype("/usr/share/fonts/truetype/liberation2/LiberationMono-Bold.ttf", 40)
-        draw.text((20, 3), caption, (255,255,255))
+        draw.text((20, 3), caption, (255,255,255), font=font)
     return img
 
-def top_k_predictions(prompt, num_candidates=32, k=16):
+def top_k_predictions(prompt, num_candidates=32, k=8):
     images = hallucinate(prompt, num_images=num_candidates)
-    #images = clip_top_k(prompt, images, k=k)
+    images = clip_top_k(prompt, images, k=k)
     return images
 
-def run_inference(prompt, num_images=16, num_preds=16):
+def run_inference(prompt, num_images=32, num_preds=8):
     images = top_k_predictions(prompt, num_candidates=num_images, k=num_preds)
     predictions = captioned_strip(images)
     output_title = f"""
